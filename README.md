@@ -35,3 +35,16 @@ npm run deploy
 ```
 
 Do not set the Cloudflare deploy command to `npx wrangler deploy`; that triggers Wrangler's Next.js auto-migration flow. This repo already has the OpenNext Cloudflare config committed.
+
+To push local environment values to Cloudflare Worker secrets:
+
+```powershell
+$env:CLOUDFLARE_API_TOKEN = "your-valid-cloudflare-api-token"
+$env:NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "..."
+$env:CLERK_SECRET_KEY = "..."
+$env:NEXT_PUBLIC_SUPABASE_URL = "..."
+$env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "..."
+.\scripts\push-cloudflare-secrets.ps1
+```
+
+The script reads from environment variables only; it does not write secret values into git.
