@@ -1,8 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  "main": "src/worker.ts",
   "name": "rep",
   "compatibility_date": "2026-05-12",
   "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "out",
+    "binding": "ASSETS"
+  },
   "observability": {
     "enabled": true
   }

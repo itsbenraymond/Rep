@@ -16,8 +16,6 @@ Open `http://localhost:3000`.
 Copy `.env.example` to `.env.local` and fill the deployment-specific values:
 
 ```bash
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-CLERK_SECRET_KEY=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
@@ -34,14 +32,12 @@ Use the deploy command:
 npm run deploy
 ```
 
-Do not set the Cloudflare deploy command to `npx wrangler deploy`; that triggers Wrangler's Next.js auto-migration flow. This repo already has the OpenNext Cloudflare config committed.
+Do not set the Cloudflare deploy command to bare `npx wrangler deploy`; that skips the required `next build` static export. This repo deploys `out/` through the committed Worker asset config.
 
 To push local environment values to Cloudflare Worker secrets:
 
 ```powershell
 $env:CLOUDFLARE_API_TOKEN = "your-valid-cloudflare-api-token"
-$env:NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "..."
-$env:CLERK_SECRET_KEY = "..."
 $env:NEXT_PUBLIC_SUPABASE_URL = "..."
 $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "..."
 .\scripts\push-cloudflare-secrets.ps1
