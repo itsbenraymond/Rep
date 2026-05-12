@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   ChevronLeft,
   Dumbbell,
@@ -11,6 +13,7 @@ import {
   Plus,
   Search,
   Timer,
+  X,
 } from "lucide-react";
 
 type Exercise = {
@@ -60,6 +63,7 @@ function bestVolume(rows: SetEntry[]) {
 }
 
 function filterByRange(rows: SetEntry[], range: (typeof ranges)[number]) {
+  if (!rows.length) return [];
   if (range === "All") return rows;
   const days = range === "7D" ? 7 : 30;
   const latest = new Date(Math.max(...rows.map((row) => new Date(row.date).getTime())));
@@ -73,14 +77,51 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<(typeof ranges)[number]>("30D");
   const [selectedExercise, setSelectedExercise] = useState("All");
+  const [progressQuery, setProgressQuery] = useState("All");
   const [activeExercises, setActiveExercises] = useState(
     exerciseLibrary.filter((exercise) => exercise.active),
   );
 
-  const availableToAdd = exerciseLibrary.filter(
+  const visibleExerciseOptions = exerciseLibrary.filter(
     (exercise) =>
-      !activeExercises.some((active) => active.name === exercise.name) &&
-      exercise.name.toLowerCase().includes(query.toLowerCase()),
+      !query ||
+      exercise.name.toLowerCase().includes(query.toLowerCase()) ||
+      exercise.area.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  const visibleProgressOptions = ["All", ...exerciseLibrary.map((exercise) => exercise.name)]
+    .filter((name) => name.toLowerCase().includes(progressQuery.toLowerCase()))
+    .slice(0, 5);
+
+  const activeNames = new Set(activeExercises.map((exercise) => exercise.name));
+
+  function addExercise(exercise: Exercise) {
+    if (activeNames.has(exercise.name)) return;
+    setActiveExercises((items) => [...items, exercise]);
+  }
+
+  function removeExercise(exerciseName: string) {
+    setActiveExercises((items) => items.filter((exercise) => exercise.name !== exerciseName));
+  }
+
+  function moveExercise(exerciseName: string, direction: -1 | 1) {
+    setActiveExercises((items) => {
+      const index = items.findIndex((exercise) => exercise.name === exerciseName);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items;
+      const next = [...items];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }
+
+  function chooseProgressExercise(exerciseName: string) {
+    setSelectedExercise(exerciseName);
+    setProgressQuery(exerciseName);
+  }
+
+  const inactiveCount = exerciseLibrary.filter(
+    (exercise) => !activeNames.has(exercise.name),
   );
 
   const progressRows = useMemo(() => {
@@ -156,30 +197,101 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="rounded-[22px] border border-white/10 bg-white/[0.045] p-3">
-              <div className="flex items-center gap-2 rounded-[16px] border border-white/10 bg-black/30 px-3">
+            <section className="rounded-[20px] border border-white/10 bg-[#0b0b0b] p-3 shadow-[0_18px_60px_rgba(0,0,0,0.38)]">
+              <div className="flex items-center gap-2 rounded-[14px] border border-white/10 bg-[#050505] px-3 ring-1 ring-[#d7ff49]/0 focus-within:ring-[#d7ff49]/50">
                 <Search size={17} className="text-[#8d918d]" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search exercise to add"
+                  placeholder="Search exercises"
                   className="h-11 min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-[#72766f]"
                 />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {availableToAdd.slice(0, 4).map((exercise) => (
+                {query ? (
                   <button
-                    key={exercise.name}
                     type="button"
-                    onClick={() => {
-                      setActiveExercises((items) => [...items, exercise]);
-                      setQuery("");
-                    }}
-                    className="flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 text-[11px] font-black text-[#d9ddd6]"
+                    aria-label="Clear search"
+                    onClick={() => setQuery("")}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] text-[#a4a7a2]"
                   >
-                    <Plus size={14} /> {exercise.name}
+                    <X size={14} />
                   </button>
-                ))}
+                ) : null}
+              </div>
+              <div className="mt-2 flex items-center justify-between px-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#72766f]">
+                  Exercise order
+                </p>
+                <p className="text-[10px] font-black text-[#8d918d]">
+                  {activeExercises.length} on / {inactiveCount.length} paused
+                </p>
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {visibleExerciseOptions.map((exercise) => {
+                  const active = activeNames.has(exercise.name);
+                  const order = activeExercises.findIndex((item) => item.name === exercise.name);
+                  return (
+                    <div
+                      key={exercise.name}
+                      className={`grid grid-cols-[1fr_auto] items-center gap-2 rounded-[15px] border px-3 py-2 ${
+                        active
+                          ? "border-[#d7ff49]/25 bg-[#d7ff49]/[0.055]"
+                          : "border-white/10 bg-white/[0.035]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => (active ? openProgress(exercise.name) : addExercise(exercise))}
+                        className="min-w-0 text-left"
+                      >
+                        <span className="block truncate text-[13px] font-black text-[#f4f1ec]">
+                          {exercise.name}
+                        </span>
+                        <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[0.12em] text-[#72766f]">
+                          {active ? `Active ${order + 1}` : "Paused"} / {exercise.area}
+                        </span>
+                      </button>
+                      {active ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={`Move ${exercise.name} up`}
+                            onClick={() => moveExercise(exercise.name, -1)}
+                            disabled={order <= 0}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-[#a4a7a2] disabled:opacity-30"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Move ${exercise.name} down`}
+                            onClick={() => moveExercise(exercise.name, 1)}
+                            disabled={order === activeExercises.length - 1}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-[#a4a7a2] disabled:opacity-30"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${exercise.name}`}
+                            onClick={() => removeExercise(exercise.name)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.08] text-[#f4f1ec]"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={`Add ${exercise.name}`}
+                          onClick={() => addExercise(exercise)}
+                          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f4f1ec] text-black"
+                        >
+                          <Plus size={15} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
@@ -238,25 +350,34 @@ export default function Home() {
               <div className="flex items-center gap-2 rounded-[16px] border border-white/10 bg-black/30 px-3">
                 <Search size={17} className="text-[#8d918d]" />
                 <input
-                  value={selectedExercise}
-                  onChange={(event) => setSelectedExercise(event.target.value)}
-                  list="progress-exercises"
+                  value={progressQuery}
+                  onChange={(event) => setProgressQuery(event.target.value)}
                   className="h-11 min-w-0 flex-1 bg-transparent text-sm font-black outline-none"
                 />
                 <button
                   type="button"
-                  onClick={() => setSelectedExercise("All")}
+                  onClick={() => chooseProgressExercise("All")}
                   className="rounded-full bg-[#d7ff49] px-3 py-1 text-[11px] font-black text-black"
                 >
                   All
                 </button>
               </div>
-              <datalist id="progress-exercises">
-                <option value="All" />
-                {exerciseLibrary.map((exercise) => (
-                  <option value={exercise.name} key={exercise.name} />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {visibleProgressOptions.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => chooseProgressExercise(name)}
+                    className={`min-h-8 rounded-full border px-3 text-[11px] font-black ${
+                      selectedExercise === name
+                        ? "border-[#d7ff49]/40 bg-[#d7ff49] text-black"
+                        : "border-white/10 bg-white/[0.055] text-[#d9ddd6]"
+                    }`}
+                  >
+                    {name}
+                  </button>
                 ))}
-              </datalist>
+              </div>
             </section>
 
             <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,#101010,#050505)] p-4">
